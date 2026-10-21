@@ -5,6 +5,11 @@ import gymnasium as gym
 import numpy as np
 from torch.utils.tensorboard.writer import SummaryWriter
 
+DRIVE_LEFT = 0 
+DRIVE_FORWARD = 1
+DRIVE_RIGHT = 2
+
+
 def main():
     writer = SummaryWriter()
     env = gym.make('LineFollowerEnv-v0')
@@ -66,15 +71,40 @@ def learn(state, action, next_state, reward, q_table):
     alpha = 0.1
     gamma = 0.9
 
-    # TODO: Implement update Q values using the Bellman update equation
+    #Retrieve the current Q value for the state/action pair
+    currentQ = q_table[state][action]
+
+    #Find the maximum Q value for the next state 
+    maxNextQ = np.max(q_table[next_state])
+
+    #Calculate target Q value 
+    target = reward + gamma*maxNextQ
+
+    #Update original Q value 
+    newQ = currentQ + alpha * (target - currentQ)
+    q_table[state][action] = newQ
 
     return q_table
 
 
 def choose_action(state, q_table, epsilon, action_space):
+
+    """Chooses the next action for the agent. 
+    If two states have the same maximum Q value, randomly select the next state."""
+
     action = 0
 
-    # TODO: Implement choose action.
+    #Randomly generate a number between 0 and 1 to determine if the agent will exploit or explore 
+    choose = np.random.rand()
+
+    if (choose < epsilon): 
+
+        maxQ = q_table[state][np.argmax(q_table[state])]
+        max_indices = np.where(q_table[state] == maxQ)
+        action = np.random.choice(max_indices[0]) #randomly select a number from the array which is the first and only element in the tuple
+
+    else: 
+        action = np.random.randint(0, action_space.n)
     
     return action
 
