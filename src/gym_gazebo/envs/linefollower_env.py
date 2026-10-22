@@ -13,6 +13,10 @@ from geometry_msgs.msg import Twist as RosTwist
 NUM_OBS_STATES = 3
 NUM_ACTIONS = 3
 
+DRIVE_LEFT = 0 
+DRIVE_FWD = 1 
+DRIVE_RIGHT = 2
+
 class LineFollowerEnv(GazeboEnv):
     def __init__(self):
         # Intializing ROS2
@@ -135,13 +139,25 @@ class LineFollowerEnv(GazeboEnv):
     def process_action(self, action: int):
         '''
         @brief Translate the action the robot is taking into a Twist message
-        @param action: an integer where 0 is left, 1 is forward and 2 is right 
+        @param action: an integer where 0 is left, 1 is forward and 2 is right. 
+        If an action outside of this range is passed, the robot will stop. 
         @retval vel_cmd: Twist message equivalent of the action
         '''
-        vel_cmd = RosTwist()
 
-        # TODO: Impelement process action.
-        
+        vel_cmd = RosTwist() #create a Twist object 
+        angular_speed = 3.0
+        drive_speed = 1.0
+
+        if action == DRIVE_LEFT: 
+            vel_cmd.angular.z = angular_speed #turn left 
+        elif action == DRIVE_FWD: 
+            vel_cmd.linear.x = drive_speed 
+        elif action == DRIVE_RIGHT: 
+            vel_cmd.angular.z = -angular_speed #turn right 
+        else: #robot stops. 
+            vel_cmd.angular.z = 0.0
+            vel_cmd.linear.x = 0.0  
+
         return vel_cmd
 
 
@@ -149,13 +165,81 @@ class LineFollowerEnv(GazeboEnv):
         '''
         @brief depending on the action, state and terminated values assign
                a reward
-        @retval reward: the reward for the current step
-        '''
-        reward = 0
+        @retval reward: the reward for the current step'''
 
-        # TODO: Implement process reward.
+        if terminated:
+                return -10
         
-        return reward
+        if state == DRIVE_FWD and action == DRIVE_FWD:
+            return 10 
+
+        elif state == DRIVE_LEFT and action == DRIVE_LEFT or state == DRIVE_RIGHT and action == DRIVE_RIGHT:
+            return 5 
+
+        else: 
+
+            return 0 
+
+
+    """From Lab 2:"""
+
+    def longestConnectedColour(self, imgRow, targetColour):
+        """!
+        @brief Finds the longest connected string of pixels in an image's row with pixel value equal to targetColour.
+
+        @param imgRow An array representing the pixel values in the row of an image. Must be grayscale.
+        @param targetColour An int representing the target colour.
+
+        @return An array storing the index numbers of the longest connected strip of targetColour in that row.
+        """
+        maxLen = 0
+        currentIndices = []
+        longestString = []
+
+        # if the current pixel is the target colour, add it to the list of indices
+        for i in range(len(imgRow)):
+            if imgRow[i] == targetColour:
+                currentIndices.append(i)
+            # else, we have either reached the end of the strip and should check for the strip's length
+            else:
+                if len(currentIndices) > maxLen:
+                    maxLen = len(currentIndices)
+                    longestString = currentIndices
+                currentIndices = []  # reset regardless of whether it was the longest
+
+        # save the list if it was the longest
+        if len(currentIndices) > maxLen:
+            longestString = currentIndices
+
+        return longestString
+
+    def findRoadCenter(self, processedFrame, targetColour):
+
+        """!
+        @pre processedFrame must be grayscale or black and white.
+
+        @param processedFrame The grayscale frame of the original video.
+        @param targetColour An int representing the target colour.
+
+        @return coordinates of the bottom center of the road 
+        if the road is not found the function returns (-1, -1)
+        """
+        # Get the image dimensions
+        height, width = processedFrame.shape
+            # start from bottom row, go upward
+        for row in range(height - 1, -1, -1):
+            # only worth checking rows that actually contain the colour
+            if np.any(processedFrame[row] == targetColour):
+                road = self.longestConnectedColour(processedFrame[row], targetColour)
+
+                # get the x/y coordinates for the center of the road
+                cx = road[len(road) // 2]
+                cy = row
+
+                return cx, cy 
+
+        return (-1, -1)
+        
 
 
     def process_obs(self, obs: RosImage):
@@ -170,11 +254,41 @@ class LineFollowerEnv(GazeboEnv):
                     longer in the field of the camera
         '''
         cv_image = CvBridge().imgmsg_to_cv2(obs, desired_encoding='bgr8')
+        cv2.imshow("Camera Feed", cv_image)
+        cv2.waitKey(1)
 
         state = 0
         terminated = False
 
-        # TODO: Implement process observation
+        #get the dimensions of the image 
+        im_height, im_width, _ = cv_image.shape 
+
+        #split the image into 3 sections 
+        left_section = np.arange(0, int(im_width/3))
+        center_section = np.arange(int(im_width/3), int(im_width*2/3))
+
+        #from Lab 2: 
+        # Convert BGR to grayscale. 'grayFrame' is a new copy of the original frame, so the information about the original colours are preserved in 'frame'
+        grayFrame = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+
+        # Threshold the image to make the road 'pop' --> use THRESH_BINARY_INV so pixels ABOVE threshold become black (0)
+        _, thresh = cv2.threshold(grayFrame, 60, 255, cv2.THRESH_BINARY_INV)
+
+        #find the road center
+        roadX, roadY = self.findRoadCenter(thresh, 255)
+
+        if roadX != -1: 
+            if roadX in left_section: 
+                state = 0 
+            elif roadX in center_section:
+                state=1 
+            else:
+                state=2
+
+        #no road found. 
+        else:
+            state = -1 
+            terminated = True 
 
         return state, terminated
 

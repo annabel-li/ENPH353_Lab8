@@ -39,7 +39,7 @@ def main():
                 
                 done = terminated or truncated
 
-                q_table = learn(state, action, next_state, reward, q_table)
+                q_table = learn(state, action, next_state, reward, q_table, terminated)
 
                 state = next_state
                 total_reward += reward
@@ -53,7 +53,8 @@ def main():
 
             if total_reward > highest_reward:
                 highest_reward = total_reward
-                print("New highest reward: {total_reward}.")
+                print(f"New highest reward: {total_reward}.")
+                saveQ(q_table, "best_q_table.csv")
 
             env.reset()
             epsilon = max(0.01, epsilon * epsilon_decay)  # Decay epsilon
@@ -67,18 +68,22 @@ def main():
         writer.close()
 
 
-def learn(state, action, next_state, reward, q_table):
+def learn(state, action, next_state, reward, q_table, terminated):
     alpha = 0.1
     gamma = 0.9
 
     #Retrieve the current Q value for the state/action pair
     currentQ = q_table[state][action]
 
-    #Find the maximum Q value for the next state 
-    maxNextQ = np.max(q_table[next_state])
+    if terminated:
+        target = reward
 
-    #Calculate target Q value 
-    target = reward + gamma*maxNextQ
+    else: 
+        #Find the maximum Q value for the next state 
+        maxNextQ = np.max(q_table[next_state])
+
+        #Calculate target Q value 
+        target = reward + gamma*maxNextQ
 
     #Update original Q value 
     newQ = currentQ + alpha * (target - currentQ)
@@ -111,15 +116,13 @@ def choose_action(state, q_table, epsilon, action_space):
 
 def saveQ(q_table, save_path):
 
-    # TODO: Implement saving the Q values
+    np.savetxt(save_path, q_table, delimiter=",")
 
-    return
 
 def loadQ(load_path):
 
-    # TODO: Implement loading the Q values
-
-    return
+    q_table = np.loadtxt(load_path, delimiter=",")
+    return q_table
 
 if __name__ == "__main__":
     main()
