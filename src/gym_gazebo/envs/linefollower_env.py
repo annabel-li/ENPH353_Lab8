@@ -148,6 +148,8 @@ class LineFollowerEnv(GazeboEnv):
         angular_speed = 3.0
         drive_speed = 1.0
 
+        #if your robot oscillates, add a small linear.x to turn right/left
+
         if action == DRIVE_LEFT: 
             vel_cmd.angular.z = angular_speed #turn left 
         elif action == DRIVE_FWD: 
@@ -170,15 +172,15 @@ class LineFollowerEnv(GazeboEnv):
         if terminated:
                 return -10
         
-        if state == DRIVE_FWD and action == DRIVE_FWD:
-            return 10 
+        # if state == DRIVE_FWD and action == DRIVE_FWD:
+        #     return 10 
 
-        elif state == DRIVE_LEFT and action == DRIVE_LEFT or state == DRIVE_RIGHT and action == DRIVE_RIGHT:
-            return 5 
+        # elif state == DRIVE_LEFT and action == DRIVE_LEFT or state == DRIVE_RIGHT and action == DRIVE_RIGHT:
+        #     return 5 
 
-        else: 
+        # else: 
 
-            return 0 
+        #     return 0 
 
 
     """From Lab 2:"""
