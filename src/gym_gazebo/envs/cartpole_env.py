@@ -115,6 +115,8 @@ class CartpoleEnv(GazeboEnv):
         self.print_state("Reset: ", self.latest_state)
 
         # Zero position and speed. Why would we do this? 
+        # - doesn't matter if you're trying to balance the pendulum at x = 0 or x = 5 
+        # - plus we only care about acceleration 
         # Ensure you also comment out the step() function equivalent line.
         simpler_state = np.array([0, 0, 
           self.latest_state[2], self.latest_state[3]])

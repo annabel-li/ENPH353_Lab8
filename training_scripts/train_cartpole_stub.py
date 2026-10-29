@@ -171,7 +171,14 @@ def main(args=None):
     percentile = 70
     reward_threshold = 600
 
-    net = NeuralNet(obs_size, hidden_size, n_action)
+    try:
+        net = NeuralNet(obs_size, hidden_size, n_action)
+        net.load_state_dict(torch.load("model.pth", map_location="cpu"))
+        print("Loaded model.pth")
+    except FileNotFoundError:
+        print("No saved model found; starting fresh")
+        net = NeuralNet(obs_size, hidden_size, n_action)
+
     objective = nn.CrossEntropyLoss()
     optimizer = optim.Adam(params=net.parameters(), lr=0.01)
 
@@ -215,6 +222,8 @@ def main(args=None):
             # When reward is above the threshold, stop training
             if reward_mean > reward_threshold:
                 print("Solved!")
+                #save the model 
+                torch.save(net.state_dict(), "model.pth")
                 break
             
     except KeyboardInterrupt:
